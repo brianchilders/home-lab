@@ -236,17 +236,12 @@ nano /srv/homelab/control/caddy/Caddyfile
 	auto_https off
 }
 
-openwebui.lab {
+http://openwebui.lab {
 	reverse_proxy openwebui:8080
 }
 
-search.lab {
-	reverse_proxy searxng:8080 {
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up X-Forwarded-Host {host}
-	}
+http://search.lab {
+	reverse_proxy searxng:8080
 }
 ```
 #### docker-compose.yml
