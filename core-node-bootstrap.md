@@ -47,14 +47,14 @@ sudo apt autoremove -y
 sudo shutdown -r now
 ```
 
-#### System Update
+#### System update
 ```
 sudo apt update
 sudo apt upgrade -y
 sudo shutdown -r now
 ```
 
-#### Docker Install
+#### Docker install
 ```
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
@@ -64,20 +64,29 @@ docker run hello-world
 ```
 
 ### Services
-
 #### Open WebUI
+##### Make folder
+```
+mkdir -p /srv/homelab/control/openwebui
+```
+
+##### .env
 ```
 openssl rand -hex 32
-mkdir -p /srv/homelab/control/openwebui
 nano /srv/homelab/control/openwebui/.env
+```
 
-.env
+```
 OLLAMA_BASE_URL=http://<OLLAMA_IP>:11434
 WEBUI_SECRET_KEY=<PASTE_GENERATED_OPENSSL_KEY_HERE>
+```
 
+##### docker-compose.yml
+```
 nano /srv/homelab/control/openwebui/docker-compose.yml
+```
 
-docker-compose.yml
+```
 services:
   openwebui:
     image: ghcr.io/open-webui/open-webui:main
@@ -89,6 +98,120 @@ services:
       - .env
     volumes:
       - /srv/homelab/control/openwebui/data:/app/backend/data
+    networks:
+      - ai-internal
 
+networks:
+  ai-internal:
+    external: true
+```
+##### Start Open WebUI
+```
+cd /srv/homelab/control/openwebui/
+docker compose up -d
+```
 
+#### SearXNG
+##### Make folders
+```
+cd /srv/homelab/control/searxng
+mkdir -p /srv/homelab/control/searxng/{config,redis}
+```
+##### docker-compose.yml
+```
+nano /srv/homelab/control/searxng/docker-compose.yml
+```
+
+```
+services:
+  redis:
+    image: docker.io/valkey/valkey:8-alpine
+    container_name: searxng-redis
+    restart: unless-stopped
+    command: valkey-server --save 30 1 --loglevel warning
+    volumes:
+      - /srv/homelab/control/searxng/redis:/data
+    networks:
+      - ai-internal
+
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SEARXNG_BASE_URL=http://core:8080/
+      - UWSGI_WORKERS=2
+      - UWSGI_THREADS=2
+    volumes:
+      - /srv/homelab/control/searxng/config:/etc/searxng
+    networks:
+      - ai-internal
+    depends_on:
+      - redis
+
+networks:
+  ai-internal:
+    external: true
+```
+##### settings.yml
+```
+openssl rand -hex 32
+nano /srv/homelab/control/searxng/config/settings.yml
+```
+
+```
+use_default_settings: true
+
+general:
+  instance_name: core-searxng
+
+search:
+  formats:
+    - html
+    - json
+  language: en-US
+  region: US
+  safe_search: 2
+
+use_default_settings:
+  engines:
+    keep_only:
+      - duckduckgo
+      - brave
+      - wikipedia
+
+server:
+  secret_key: <PASTE_GENERATED_OPENSSL_KEY_HERE>
+  limiter: false
+  image_proxy: true
+  default_http_headers:
+    User-Agent:
+      - Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36
+      - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15
+
+ui:
+  default_settings:
+    safesearch: 2
+
+valkey:
+  url: redis://redis:6379/0
+```
+##### Start SearXNG
+```
+cd /srv/homelab/control/searxng
+docker compose up -d
+```
+##### Test SearXNG
+```
+curl "http://localhost:8080/search?q=test&format=json"
+docker exec -it openwebui curl "http://searxng:8080/search?q=test&format=json"
+```
+##### Config Open WebUI:
+```
+Admin Panel --> Settings --> Web Search
+Enable Web Search
+Set Web Search Engine to searxng
+Query URL: http://searxng:8080/search?q=<query>
 ```
