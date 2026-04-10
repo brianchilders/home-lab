@@ -11,9 +11,9 @@ nvme0n1     259:0    0  1.8T  0 disk
 ```
 
 
-### Platform Bootstrap
+## Platform Bootstrap
 
-#### Folder Structure
+### Folder Structure
 ```sudo mkdir -p /srv/homelab/{compose,control,data,logs,backups}
 sudo chown -R $USER:$USER /srv/homelab
 
@@ -21,7 +21,7 @@ mkdir -p /srv/homelab/control/{caddy,openwebui,searxng,redis}
 mkdir -p /srv/homelab/data/{postgres,qdrant,artifacts}
 ```
 
-#### Remove snapd garbage
+### Remove snapd garbage
 ```
 snap list
 sudo systemctl stop snapd
@@ -47,14 +47,14 @@ sudo apt autoremove -y
 sudo shutdown -r now
 ```
 
-#### System update
+### System update
 ```
 sudo apt update
 sudo apt upgrade -y
 sudo shutdown -r now
 ```
 
-#### Docker install
+### Docker install
 ```
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
@@ -63,14 +63,14 @@ sudo shutdown -r now
 docker run hello-world
 ```
 
-### Services
-#### Open WebUI
-##### Make folder
+## Services
+### Open WebUI
+#### Make folder
 ```
 mkdir -p /srv/homelab/control/openwebui
 ```
 
-##### .env
+#### .env
 ```
 openssl rand -hex 32
 nano /srv/homelab/control/openwebui/.env
@@ -81,7 +81,7 @@ OLLAMA_BASE_URL=http://<OLLAMA_IP>:11434
 WEBUI_SECRET_KEY=<PASTE_GENERATED_OPENSSL_KEY_HERE>
 ```
 
-##### docker-compose.yml
+#### docker-compose.yml
 ```
 nano /srv/homelab/control/openwebui/docker-compose.yml
 ```
@@ -105,19 +105,19 @@ networks:
   ai-internal:
     external: true
 ```
-##### Start Open WebUI
+#### Start Open WebUI
 ```
 cd /srv/homelab/control/openwebui/
 docker compose up -d
 ```
 
-#### SearXNG
-##### Make folders
+### SearXNG
+#### Make folders
 ```
 cd /srv/homelab/control/searxng
 mkdir -p /srv/homelab/control/searxng/{config,redis}
 ```
-##### docker-compose.yml
+#### docker-compose.yml
 ```
 nano /srv/homelab/control/searxng/docker-compose.yml
 ```
@@ -155,7 +155,7 @@ networks:
   ai-internal:
     external: true
 ```
-##### settings.yml
+#### settings.yml
 ```
 openssl rand -hex 32
 nano /srv/homelab/control/searxng/config/settings.yml
@@ -198,20 +198,88 @@ ui:
 valkey:
   url: redis://redis:6379/0
 ```
-##### Start SearXNG
+#### Start SearXNG
 ```
 cd /srv/homelab/control/searxng
 docker compose up -d
 ```
-##### Test SearXNG
+#### Test SearXNG
 ```
 curl "http://localhost:8080/search?q=test&format=json"
 docker exec -it openwebui curl "http://searxng:8080/search?q=test&format=json"
 ```
-##### Config Open WebUI:
+#### Config Open WebUI:
 ```
 Admin Panel --> Settings --> Web Search
 Enable Web Search
 Set Web Search Engine to searxng
 Query URL: http://searxng:8080/search?q=<query>
+```
+### Caddy
+#### Add IP to your hosts
+```
+<core IP> openwebui.lab
+<core IP> search.lab
+```
+#### Make folder
+```
+mkdir -p /srv/homelab/control/caddy
+cd /srv/homelab/control/caddy
+```
+#### Caddyfile
+```
+nano /srv/homelab/control/caddy/Caddyfile
+```
+
+```
+{
+	auto_https off
+}
+
+openwebui.lab {
+	reverse_proxy openwebui:8080
+}
+
+search.lab {
+	reverse_proxy searxng:8080 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+	}
+}
+```
+#### docker-compose.yml
+```
+nano /srv/homelab/control/caddy/docker-compose.yml
+```
+
+```
+services:
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - /srv/homelab/control/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/homelab/control/caddy/data:/data
+      - /srv/homelab/control/caddy/config:/config
+    networks:
+      - ai-internal
+
+networks:
+  ai-internal:
+    external: true
+```
+#### Start Caddy
+```
+cd /srv/homelab/control/caddy
+docker compose up -d
+```
+#### Test Caddy
+```
+http://openwebui.lab
+http://search.lab
 ```
