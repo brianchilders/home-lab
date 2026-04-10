@@ -68,4 +68,27 @@ docker run hello-world
 #### Open WebUI
 ```
 openssl rand -hex 32
+mkdir -p /srv/homelab/control/openwebui
+nano /srv/homelab/control/openwebui/.env
+
+.env
+OLLAMA_BASE_URL=http://<OLLAMA_IP>:11434
+WEBUI_SECRET_KEY=<PASTE_GENERATED_OPENSSL_KEY_HERE>
+
+nano /srv/homelab/control/openwebui/docker-compose.yml
+
+docker-compose.yml
+services:
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: openwebui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    env_file:
+      - .env
+    volumes:
+      - /srv/homelab/control/openwebui/data:/app/backend/data
+
+
 ```
