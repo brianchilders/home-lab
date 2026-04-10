@@ -79,6 +79,9 @@ nano /srv/homelab/control/openwebui/.env
 ```
 OLLAMA_BASE_URL=http://<OLLAMA_IP>:11434
 WEBUI_SECRET_KEY=<PASTE_GENERATED_OPENSSL_KEY_HERE>
+VECTOR_DB=qdrant
+QDRANT_URI=http://qdrant:6333
+WEBUI_URL=http://openwebui.lab
 ```
 
 #### docker-compose.yml
@@ -141,7 +144,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SEARXNG_BASE_URL=http://core:8080/
+      - SEARXNG_BASE_URL=http://search.lab/
       - UWSGI_WORKERS=2
       - UWSGI_THREADS=2
     volumes:
@@ -215,11 +218,45 @@ Enable Web Search
 Set Web Search Engine to searxng
 Query URL: http://searxng:8080/search?q=<query>
 ```
+### Qdrant
+#### Make folder
+```
+mkdir -p /srv/homelab/data/qdrant
+cd /srv/homelab/data/qdrant
+```
+#### docker-compose.yml
+```
+nano /srv/homelab/data/qdrant/docker-compose.yml
+```
+
+```
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - /srv/homelab/data/qdrant/storage:/qdrant/storage
+    networks:
+      - ai-internal
+
+networks:
+  ai-internal:
+    external: true
+```
+#### Start Qdrant
+```
+docker compose up -d
+```
 ### Caddy
 #### Add IP to your hosts
 ```
 <core IP> openwebui.lab
 <core IP> search.lab
+<core IP> qdrant.lab
 ```
 #### Make folder
 ```
@@ -242,6 +279,10 @@ http://openwebui.lab {
 
 http://search.lab {
 	reverse_proxy searxng:8080
+}
+
+http://qdrant.lab {
+        reverse_proxy qdrant:6333
 }
 ```
 #### docker-compose.yml
@@ -277,4 +318,5 @@ docker compose up -d
 ```
 http://openwebui.lab
 http://search.lab
+http://qdrant.lab
 ```
