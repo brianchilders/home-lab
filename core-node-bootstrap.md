@@ -17,7 +17,7 @@ nvme0n1     259:0    0  1.8T  0 disk
 ```sudo mkdir -p /srv/homelab/{compose,control,data,logs,backups}
 sudo chown -R $USER:$USER /srv/homelab
 
-mkdir -p /srv/homelab/control/{caddy,openwebui,searxng,redis}
+mkdir -p /srv/homelab/control/{caddy,node-red,openwebui,redis,searxng}
 mkdir -p /srv/homelab/data/{postgres,qdrant,artifacts}
 ```
 
@@ -117,7 +117,6 @@ docker compose up -d
 ### SearXNG
 #### Make folders
 ```
-cd /srv/homelab/control/searxng
 mkdir -p /srv/homelab/control/searxng/{config,redis}
 ```
 #### docker-compose.yml
@@ -222,7 +221,6 @@ Query URL: http://searxng:8080/search?q=<query>
 #### Make folder
 ```
 mkdir -p /srv/homelab/data/qdrant
-cd /srv/homelab/data/qdrant
 ```
 #### docker-compose.yml
 ```
@@ -249,6 +247,7 @@ networks:
 ```
 #### Start Qdrant
 ```
+cd /srv/homelab/data/qdrant
 docker compose up -d
 ```
 ### Node-RED
