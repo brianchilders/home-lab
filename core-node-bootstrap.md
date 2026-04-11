@@ -251,12 +251,47 @@ networks:
 ```
 docker compose up -d
 ```
+### Node-RED
+#### Create folders
+```
+mkdir -p /srv/homelab/control/node-red
+mkdir -p /srv/homelab/control/node-red/data
+```
+#### docker-compose.yml
+```
+nano /srv/homelab/control/node-red/docker-compose.yml
+```
+```
+services:
+  node-red:
+    image: nodered/node-red:latest
+    container_name: node-red
+    restart: unless-stopped
+    ports:
+      - "1880:1880"
+    environment:
+      - TZ=America/Chicago
+    volumes:
+      - /srv/homelab/control/node-red/data:/data
+    networks:
+      - ai-internal
+
+networks:
+  ai-internal:
+    external: true
+```
+#### Start Node-RED
+```
+cd /srv/homelab/control/node-red
+docker compose up -d
+```
 ### Caddy
 #### Add IP to your hosts
 ```
 <core IP> openwebui.lab
 <core IP> search.lab
 <core IP> qdrant.lab
+<core IP> node-red.lab
 ```
 #### Make folder
 ```
@@ -283,6 +318,10 @@ http://search.lab {
 
 http://qdrant.lab {
         reverse_proxy qdrant:6333
+}
+
+http://node-red.lab {
+	reverse_proxy node-red:1880
 }
 ```
 #### docker-compose.yml
@@ -319,5 +358,6 @@ docker compose up -d
 http://openwebui.lab
 http://search.lab
 http://qdrant.lab
+http://node-red.lab
 ```
 
